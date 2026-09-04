@@ -25,9 +25,13 @@ export const animate = ({
 }: AnimateParams) => {
   'worklet';
 
-  if (!configs) {
-    configs = ANIMATION_CONFIGS;
-  }
+  /**
+   * `configs` is either the shared `ANIMATION_CONFIGS` singleton - captured once
+   * per runtime and used by every sheet in the app - or the caller's own memoized
+   * `animationConfigs` object. Neither may be written into, so we keep a local
+   * reference and copy before applying any override.
+   */
+  let _configs = configs ?? ANIMATION_CONFIGS;
 
   // Users might have an accessibility setting to reduce motion turned on.
   // This prevents the animation from running when presenting the sheet, which results in
@@ -35,22 +39,22 @@ export const animate = ({
   // configs.reduceMotion = ReduceMotion.Never;
 
   if (overrideReduceMotion) {
-    configs.reduceMotion = overrideReduceMotion;
+    _configs = { ..._configs, reduceMotion: overrideReduceMotion };
   }
 
   // detect animation type
   const type =
-    'duration' in configs || 'easing' in configs
+    'duration' in _configs || 'easing' in _configs
       ? ANIMATION_METHOD.TIMING
       : ANIMATION_METHOD.SPRING;
 
   if (type === ANIMATION_METHOD.TIMING) {
-    return withTiming(point, configs as WithTimingConfig, onComplete);
+    return withTiming(point, _configs as WithTimingConfig, onComplete);
   }
 
   return withSpring(
     point,
-    Object.assign({ velocity }, configs) as WithSpringConfig,
+    Object.assign({ velocity }, _configs) as WithSpringConfig,
     onComplete
   );
 };
